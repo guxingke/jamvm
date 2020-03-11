@@ -46,6 +46,7 @@ void setDefaultInitArgs(InitArgs *args) {
     args->verbosegc    = FALSE;
     args->verbosedll   = FALSE;
     args->verboseclass = FALSE;
+    args->verbosecall  = FALSE;
 
     args->trace_jni_sigs = FALSE;
     args->compact_specified = FALSE;
@@ -109,6 +110,7 @@ int initVM(InitArgs *args) {
              initialiseString() &&
              initialiseException() &&
              initialiseNatives() &&
+             initialiseExecutor(args) &&
              initialiseAccess() &&
              initialiseFrame() &&
              initialiseJNI() &&

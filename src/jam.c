@@ -84,7 +84,7 @@ void showUsage(char *name) {
     printf("  -classpath\t   <jar/zip files and directories separated by :>\n");
     printf("\t\t   locations where to find application classes\n");
     printf("  -D<name>=<value> set a system property\n");
-    printf("  -verbose[:class|gc|jni]\n");
+    printf("  -verbose[:class|gc|jni|call]\n");
     printf("\t\t   :class print out information about class loading, etc.\n");
     printf("\t\t   :gc print out results of garbage collection\n");
     printf("\t\t   :jni print out native method dynamic resolution\n");
@@ -193,6 +193,9 @@ int parseCommandLine(int argc, char *argv[], InitArgs *args) {
 
                     else if(strcmp(type, ":jni") == 0)
                         args->verbosedll = TRUE;
+
+                    else if(strcmp(type, ":call") == 0)
+                        args->verbosecall= TRUE;
 
                 } else if(strcmp(argv[i], "-jar") == 0) {
                     is_jar = TRUE;

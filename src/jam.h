@@ -733,6 +733,7 @@ typedef struct InitArgs {
     int verbosegc;
     int verbosedll;
     int verboseclass;
+    int verbosecall;
 
     int compact_specified; /* Whether compaction has been given on the
                               command line, and the value if it has */
@@ -1033,6 +1034,7 @@ extern char arrayStoreCheck(Class *class, Class *test);
 
 /* execute */
 
+extern int initialiseExecutor(InitArgs *args);
 extern void *executeMethodArgs(Object *ob, Class *class, MethodBlock *mb, ...);
 extern void *executeMethodVaList(Object *ob, Class *class, MethodBlock *mb,
                                   va_list args);

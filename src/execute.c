@@ -28,13 +28,15 @@
 #include "properties.h"
 #include "jni-internal.h"
 
+static int verbosecall;
+
 #define VA_DOUBLE(args, sp)                                 \
     if(*sig == 'D')                                         \
         *(double*)sp = va_arg(args, double);                \
     else                                                    \
         *(u8*)sp = va_arg(args, u8);                        \
     sp+=2
-         
+
 #define VA_SINGLE(args, sp)                                 \
     if(*sig == 'L' || *sig == '[')                          \
         *sp = va_arg(args, uintptr_t) & ~REF_MASK;          \
@@ -115,20 +117,24 @@ void *executeMethodVaList(Object *ob, Class *class, MethodBlock *mb,
 
     /* copy args onto stack */
 
-    if(ob)
+    if (ob)
         *sp++ = (uintptr_t) ob; /* push receiver first */
 
     SCAN_SIG(sig, VA_DOUBLE(jargs, sp), VA_SINGLE(jargs, sp))
 
-    if(mb->access_flags & ACC_SYNCHRONIZED)
+    if (mb->access_flags & ACC_SYNCHRONIZED)
         objectLock(ob ? ob : mb->class);
 
-    if(mb->access_flags & ACC_NATIVE)
+    if (mb->access_flags & ACC_NATIVE)
         (*mb->native_invoker)(class, mb, ret);
-    else
+    else {
+        if (verbosecall) {
+            jam_printf("call %s.%s\n", CLASS_CB(mb->class)->name, mb->name);
+        }
         executeJava();
+    }
 
-    if(mb->access_flags & ACC_SYNCHRONIZED)
+    if (mb->access_flags & ACC_SYNCHRONIZED)
         objectUnlock(ob ? ob : mb->class);
 
     POP_TOP_FRAME(ee);
@@ -147,20 +153,24 @@ void *executeMethodList(Object *ob, Class *class, MethodBlock *mb, u8 *jargs) {
 
     /* copy args onto stack */
 
-    if(ob)
+    if (ob)
         *sp++ = (uintptr_t) ob; /* push receiver first */
 
     SCAN_SIG(sig, JA_DOUBLE(jargs, sp), JA_SINGLE(jargs, sp))
 
-    if(mb->access_flags & ACC_SYNCHRONIZED)
+    if (mb->access_flags & ACC_SYNCHRONIZED)
         objectLock(ob ? ob : mb->class);
 
-    if(mb->access_flags & ACC_NATIVE)
+    if (mb->access_flags & ACC_NATIVE)
         (*mb->native_invoker)(class, mb, ret);
-    else
+    else {
+        if (verbosecall) {
+            jam_printf("call %s.%s\n", CLASS_CB(mb->class)->name, mb->name);
+        }
         executeJava();
+    }
 
-    if(mb->access_flags & ACC_SYNCHRONIZED)
+    if (mb->access_flags & ACC_SYNCHRONIZED)
         objectUnlock(ob ? ob : mb->class);
 
     POP_TOP_FRAME(ee);
@@ -168,3 +178,7 @@ void *executeMethodList(Object *ob, Class *class, MethodBlock *mb, u8 *jargs) {
     return ADJUST_RET_ADDR(ret, *sig);
 }
 
+int initialiseExecutor(InitArgs *args) {
+    verbosecall = args->verbosecall;
+    return TRUE;
+}
