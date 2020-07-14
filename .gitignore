@@ -29,3 +29,5 @@ autom4te.cache/
 
 src/interp/engine/compute_relocatability
 src/interp/relocatability.inc
+
+.idea/

@@ -1337,7 +1337,7 @@ int initialiseThreadStage2(InitArgs *args) {
 
     registerStaticClassRef(&thread_class);
 
-    name = findField(thread_class, SYMBOL(name), classlibThreadNameType());
+    name = findField(thread_class, SYMBOL(name), SYMBOL(sig_java_lang_String));
     daemon = findField(thread_class, SYMBOL(daemon), SYMBOL(Z));
     group = findField(thread_class, SYMBOL(group),
                                     SYMBOL(sig_java_lang_ThreadGroup));
