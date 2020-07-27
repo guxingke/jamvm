@@ -180,10 +180,12 @@ char *String2Cstr(Object *string) {
 int initialiseString() {
     FieldBlock *value;
 
+    // openjdk 下，加载的第一个 class, java/lang/String , 万物始于String .
     string_class = findSystemClass0(SYMBOL(java_lang_String));
     if(string_class == NULL)
         goto error;
 
+    // 确保字段 value 是 char[] 类型。
     value = findField(string_class, SYMBOL(value), SYMBOL(array_C));
     if(value == NULL)
         goto error;

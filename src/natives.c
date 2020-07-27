@@ -30,6 +30,9 @@
 #include "classlib.h"
 
 int initialiseNatives() {
+    // classlib 初始化
+    // gnuclasspath 下，初始化 native-methods
+    // openjdk 下，加载  libjava.so 和 一部分 native-methods
     if(!classlibInitialiseNatives()) {
         jam_fprintf(stderr, "Error initialising VM (initialiseNatives)\n");
         return FALSE;

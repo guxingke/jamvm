@@ -2343,11 +2343,14 @@ out:
 }
 
 int initialiseClassStage1(InitArgs *args) {
+    // 为 1 时，加载class会输出信息
     verbose = args->verboseclass;
 
+    // -cp or -classpath 值，即用户传递的 classpath.
     setClassPath(args);
+    // -Xbootclasspath* 相关参数设置
     setBootClassPath(args);
-
+    //将 bootpath 转化成 static BCPEntry *bootclasspath;
     parseBootClassPath();
 
     /* Init hash table, and create lock for the bootclassloader classes */
@@ -2357,9 +2360,11 @@ int initialiseClassStage1(InitArgs *args) {
     initHashTable(boot_packages, PCKG_INITSZE, TRUE);
 
     /* Register the address of where the java.lang.Class ref _will_ be */
+    // 占个坑
     registerStaticClassRef(&java_lang_Class);
 
     /* Do classlib specific class initialisation */
+    // openjdk 下没做事情
     if(!classlibInitialiseClass()) {
         jam_fprintf(stderr, "Error initialising VM (initialiseClassStage1)\n");
         return FALSE;

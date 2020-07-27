@@ -44,6 +44,10 @@ static int exception_symbols[] = {
 int initialiseException() {
     int i;
 
+    // 加载异常相关class
+    // [java/lang/StackTraceElement;
+    // java/lang/StackTraceElement;
+    // java/lang/Throwable;
     ste_array_class = findArrayClass(SYMBOL(array_java_lang_StackTraceElement));
     ste_class = findSystemClass0(SYMBOL(java_lang_StackTraceElement));
     throw_class = findSystemClass0(SYMBOL(java_lang_Throwable));
@@ -63,11 +67,13 @@ int initialiseException() {
        These are preloaded to speed up access.  The VM will
        abort if any can't be loaded */
 
+    // 预加载异常相关的 class
     for(i = 0; i < MAX_EXCEPTION_ENUM; i++) {
         exceptions[i] = findSystemClass0(symbol_values[exception_symbols[i]]);
         registerStaticClassRef(&exceptions[i]);
     }
 
+    // 获取 java/lang/Throwable backtrace_offset .
     if((inited = classlibInitialiseException(throw_class)))
         return TRUE;
 
