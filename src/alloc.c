@@ -1846,6 +1846,7 @@ void referenceHandlerThreadLoop(Thread *self) {
                         "<GC: enqueuing %d references>\n", self, &self);
 }
 
+// 提前创建 oom 实例，以便在 oom 时迅速抛出
 int initialiseGC(InitArgs *args) {
     /* Pre-allocate an OutOfMemoryError exception object - we throw it
      * when we're really low on heap space, and can create FA... */

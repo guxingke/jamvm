@@ -128,10 +128,12 @@ static void prepareClass(Class *class) {
     ClassBlock *cb = CLASS_CB(class);
 
     if(cb->name == SYMBOL(java_lang_Class)) {
+       // java_lang_Class 赋值 (2)
        java_lang_Class = class->class = class;
        cb->flags |= CLASS_CLASS;
     } else {
        if(java_lang_Class == NULL)
+          // 优先加载 java/lang/Class; (1)
           findSystemClass0(SYMBOL(java_lang_Class));
        class->class = java_lang_Class;
     }
@@ -366,6 +368,7 @@ Class *parseClass(char *classname, char *data, int offset, int len,
         return NULL;
     }
 
+    // TODO：给 class 关联上 java/lang/Class;
     prepareClass(class);
 
     if(classblock->name == SYMBOL(java_lang_Object)) {
@@ -1080,6 +1083,7 @@ void linkClass(Class *class) {
    if(super) {
       ClassBlock *super_cb = CLASS_CB(super);
       if(super_cb->state < CLASS_LINKED)
+          // 递归优先 link 父类
           linkClass(super);
 
       spr_flags = super_cb->flags;
@@ -1090,6 +1094,7 @@ void linkClass(Class *class) {
    }
 
    /* Calculate object layout */
+   // 主要是计算 object_size.
    prepareFields(class);
 
    /* Prepare methods */
@@ -1131,13 +1136,13 @@ void linkClass(Class *class) {
 
        /* Static, private or init methods aren't dynamically invoked, so
          don't stick them in the table to save space */
-
+       // 静态，私有，构造函数，类初始化方法，是不用动态分派的。
        if((mb->access_flags & (ACC_STATIC | ACC_PRIVATE)) ||
                               (mb->name[0] == '<'))
            continue;
 
        /* if it's overriding an inherited method, replace in method table */
-
+      // 如果复写了父类方法,
        for(j = 0; j < spr_mthd_tbl_sze; j++)
            if(mb->name == spr_mthd_tbl[j]->name &&
                         mb->type == spr_mthd_tbl[j]->type &&
@@ -1147,6 +1152,7 @@ void linkClass(Class *class) {
            }
 
        if(j == spr_mthd_tbl_sze)
+           // 新方法
            mb->method_table_index = spr_mthd_tbl_sze + new_methods_count++;
    }
 
@@ -2387,6 +2393,7 @@ int initialiseClassStage2() {
     /* Ensure that java.lang.Class is initialised.  We can't do it in
        stage1 (above) as it is too early in the initialisation process
        to run Java code */
+    // 初始化 java/lang/Class 类
     if(initClass(java_lang_Class) == NULL) {
         jam_fprintf(stderr, "Error initialising VM (initialiseClassStage2)\n"
                             "java.lang.Class could not be initialised!\n");

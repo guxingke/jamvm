@@ -49,6 +49,8 @@ char *getCommandLineProperty(char *key) {
     return NULL;
 }
 
+// 取得命令行传递的 properties
+// 获取默认JavaHome, 默认是安装目录
 int initialiseProperties(InitArgs *args) {
     commandline_props = args->commandline_props;
     commandline_props_count = args->props_count;

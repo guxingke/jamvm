@@ -37,6 +37,10 @@ void jamvm_exit(int status) {
     (*exit_hook)(status);
 }
 
+// 初始化了两个函数指针
+// 一个打印，一个退出
+// 
+// vfprintf 和 exit 都是标准库函数。
 int initialiseHooks(InitArgs *args) {
     vfprintf_hook = args->vfprintf;
     exit_hook = args->exit;

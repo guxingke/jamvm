@@ -428,6 +428,7 @@ void resetPeakThreadsCount() {
 }
 
 void initialiseJavaStack(ExecEnv *ee) {
+   // 默认 256k
    int stack_size = ee->stack_size
           ? (ee->stack_size > MIN_STACK ? ee->stack_size : MIN_STACK)
           : dflt_stack_size;
@@ -445,6 +446,7 @@ void initialiseJavaStack(ExecEnv *ee) {
    ee->stack = stack;
    ee->last_frame = top;
    ee->stack_size = stack_size;
+   // STACK_RED_ZONE_SIZE = 1k，为stack over flow 异常预留的 1k 空间
    ee->stack_end = stack + stack_size-STACK_RED_ZONE_SIZE;
 }
 
@@ -1312,6 +1314,7 @@ int initialiseThreadStage1(InitArgs *args) {
     main_thread.id = genThreadID();
     main_thread.ee = &main_ee;
 
+    // 初始化 java 栈
     initialiseJavaStack(&main_ee);
     setThreadSelf(&main_thread);
 
