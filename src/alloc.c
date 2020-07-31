@@ -286,6 +286,13 @@ void clearMarkBits() {
     memset(markbits, 0, markbit_size * sizeof(*markbits));
 }
 
+//1. 使用 nmap 申请内存
+//2. 内存对齐
+//内存对齐(找到大于当前地址并且整除对齐数的第一个地址)示例
+//250 按 8 byte 对齐, 对齐地址为 256 .
+//3. 初始化GC相关锁 
+//4. 缓存 pagesize, macos 当前为4096
+//5. 设置输出gc信息标志
 int initialiseAlloc(InitArgs *args) {
     char *mem = (char*)mmap(0, args->max_heap, PROT_READ|PROT_WRITE,
                                                MAP_PRIVATE|MAP_ANON, -1, 0);

@@ -52,15 +52,6 @@ void showNonStandardOptions() {
     printf("  -Xasyncgc\t   turn on asynchronous garbage collection\n");
     printf("  -Xcompactalways  always compact the heap when garbage-collecting\n");
     printf("  -Xnocompact\t   turn off heap-compaction\n");
-#ifdef INLINING
-    printf("  -Xnoinlining\t   turn off interpreter inlining\n");
-    printf("  -Xshowreloc\t   show opcode relocatability\n");
-    printf("  -Xreplication:[none|always|<value>]\n");
-    printf("\t\t   none : always re-use super-instructions\n");
-    printf("\t\t   always : never re-use super-instructions\n");
-    printf("\t\t   <value> copy when usage reaches threshold value\n");
-    printf("  -Xcodemem:[unlimited|<size>] (default maximum heapsize/4)\n");
-#endif
     printf("  -Xms<size>\t   set the initial size of the heap\n");
     printf("\t\t   (default = MAX(physical memory/64, %dM))\n",
            DEFAULT_MIN_HEAP/MB);

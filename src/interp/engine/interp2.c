@@ -20,10 +20,3 @@
  */
 
 #include "config.h"
-
-#ifdef INLINING
-#define executeJava() executeJava2()
-#define PAD __asm__(".space 4; .space 4; .space 4; .space 4");
-
-#include "interp.c"
-#endif

@@ -45,17 +45,6 @@ uintptr_t *executeJava() {
        interpreter variant */
     INTERPRETER_DEFINITIONS
 
-   /* Caching is supported in all variants and
-      may be enabled or disabled */
-#ifdef USE_CACHE
-    union {
-        struct {
-            uintptr_t v1;
-            uintptr_t v2;
-        } i;
-        int64_t l;
-    } cache;
-#endif
 
     /* Variable definitions holding the interpreter
        state.  These are common to all interpreter
@@ -368,17 +357,11 @@ uintptr_t *executeJava() {
 #define ZERO_DIVISOR_CHECK_2                               \
     ZERO_DIVISOR_CHECK((int)cache.i.v2);
 
-#ifdef USE_CACHE
-#define PUSH_0(value, ins_len)                             \
-    cache.i.v1 = value;                                    \
-    DISPATCH(1, ins_len);
-#else
 #define PUSH_0(value, ins_len) {                           \
     uintptr_t tos = value;                                 \
     *ostack++ = tos;                                       \
     DISPATCH(0, ins_len);                                  \
 }
-#endif
 
 #define PUSH_1(value, ins_len)                             \
     cache.i.v2 = value;                                    \
@@ -519,10 +502,6 @@ uintptr_t *executeJava() {
     *ostack++ = cache.i.v1;                                \
     BRANCH(TYPE, 2, (int)cache.i.v2 COND 0);
 
-#ifdef DIRECT
-#define ALOAD_THIS(level)
-
-#else /* DIRECT */
 
 #define ALOAD_THIS(level)                                  \
     if(pc[1] != OPC_GETFIELD) {                            \
@@ -539,28 +518,16 @@ uintptr_t *executeJava() {
         OPCODE_REWRITE(opcode);                            \
         DISPATCH(level, 0);                                \
     }
-#endif /* DIRECT */
 
     MULTI_LEVEL_OPCODES(0);
-
-#ifdef USE_CACHE
-    MULTI_LEVEL_OPCODES(1);
-    MULTI_LEVEL_OPCODES(2);
-#endif
 
     DEF_OPC_210(OPC_NOP,
         DISPATCH(0, 1);
     )
 
-#ifdef USE_CACHE
-#define PUSH_LONG(value, ins_len) \
-    cache.l = value;              \
-    DISPATCH(2, ins_len);
-#else
 #define PUSH_LONG(value, ins_len) \
     STACK_PUSH(uint64_t, value);  \
     DISPATCH(0, ins_len);
-#endif
     
     DEF_OPC_210_2(
             OPC_LCONST_0,
@@ -610,15 +577,9 @@ uintptr_t *executeJava() {
         PUSH_LONG(*(u8*)(&lvars[3]), 1);
     )
 
-#ifdef USE_CACHE
-#define POP_LONG(dest, ins_len) \
-    dest = cache.l;             \
-    DISPATCH(0, ins_len);
-#else
 #define POP_LONG(dest, ins_len) \
     dest = STACK_POP(uint64_t); \
     DISPATCH(0, ins_len);
-#endif
 
     DEF_OPC_012_2(
             OPC_LSTORE,
@@ -650,13 +611,8 @@ uintptr_t *executeJava() {
         POP_LONG(*(u8*)(&lvars[3]), 1);
     )
 
-#ifdef USE_CACHE
-#define ARRAY_LOAD_IDX cache.i.v2
-#define ARRAY_LOAD_ARY cache.i.v1
-#else
 #define ARRAY_LOAD_IDX *--ostack
 #define ARRAY_LOAD_ARY *--ostack
-#endif
 
 #define ARRAY_LOAD(TYPE)                       \
 {                                              \
@@ -701,13 +657,8 @@ uintptr_t *executeJava() {
         PUSH_LONG(ARRAY_DATA(array, u8)[idx], 1);
     })
 
-#ifdef USE_CACHE
-#define ARRAY_STORE_VAL cache.i.v2
-#define ARRAY_STORE_IDX cache.i.v1
-#else
 #define ARRAY_STORE_VAL *--ostack
 #define ARRAY_STORE_IDX *--ostack
-#endif
 
 #define ARRAY_STORE(TYPE)                     \
 {                                             \
@@ -752,21 +703,6 @@ uintptr_t *executeJava() {
         DISPATCH(0, 1);
     })
 
-#ifdef USE_CACHE
-    DEF_OPC_012_2(
-            OPC_LASTORE,
-            OPC_DASTORE, {
-        int idx = ostack[-1];
-        Object *array = (Object *)ostack[-2];
-
-        ostack -= 2;
-        NULL_POINTER_CHECK(array);
-        ARRAY_BOUNDS_CHECK(array, idx);
-
-        ARRAY_DATA(array, u8)[idx] = cache.l;
-        DISPATCH(0, 1);
-    })
-#else
     DEF_OPC_012_2(
             OPC_LASTORE,
             OPC_DASTORE, {
@@ -780,51 +716,7 @@ uintptr_t *executeJava() {
         ARRAY_DATA(array, u8)[idx] = *(u8*)&ostack[2];
         DISPATCH(0, 1);
     })
-#endif
 
-#ifdef USE_CACHE
-    DEF_OPC_012(OPC_DUP_X1, {
-        *ostack++ = cache.i.v2;
-        DISPATCH(2, 1);
-    })
-
-    DEF_OPC_012(OPC_DUP_X2, {
-        ostack[0] = ostack[-1];
-        ostack[-1] = cache.i.v2;
-        ostack++;
-        DISPATCH(2, 1);
-    })
-
-    DEF_OPC_012(OPC_DUP2, {
-        *ostack++ = cache.i.v1;
-        *ostack++ = cache.i.v2;
-        DISPATCH(2, 1);
-    })
-
-    DEF_OPC_012(OPC_DUP2_X1, {
-        ostack[0]  = cache.i.v2;
-        ostack[1]  = ostack[-1];
-        ostack[-1] = cache.i.v1;
-        ostack += 2;
-        DISPATCH(2, 1);
-    })
-
-    DEF_OPC_012(OPC_DUP2_X2,
-        ostack[0] = ostack[-2];
-        ostack[1] = ostack[-1];
-        ostack[-2] = cache.i.v1;
-        ostack[-1] = cache.i.v2;
-        ostack += 2;
-        DISPATCH(2, 1);
-    )
-
-    DEF_OPC_012(OPC_SWAP, {
-        uintptr_t word1 = cache.i.v1;
-        cache.i.v1 = cache.i.v2;
-        cache.i.v2 = word1;
-        DISPATCH(2, 1);
-    })
-#else /* USE_CACHE */
     DEF_OPC_012(OPC_DUP_X1, {
         uintptr_t word1 = ostack[-1];
         uintptr_t word2 = ostack[-2];
@@ -886,7 +778,6 @@ uintptr_t *executeJava() {
         ostack[-2] = word1;
         DISPATCH(0, 1)
     })
-#endif /* USE_CACHE */
 
 #define BINARY_OP_fp(TYPE, OP)             \
     STACK(TYPE, -2) OP##= STACK(TYPE, -1); \
@@ -925,14 +816,8 @@ uintptr_t *executeJava() {
         BINARY_OP_fp(double, /);
     )
 
-#ifdef USE_CACHE
-#define BINARY_OP_long(OP)                   \
-    cache.l = STACK_POP(int64_t) OP cache.l; \
-    DISPATCH(2, 1);
-#else
 #define BINARY_OP_long(OP)                   \
     BINARY_OP_fp(int64_t, OP)
-#endif
 
     DEF_OPC_012(OPC_LADD,
         BINARY_OP_long(+);
@@ -958,18 +843,6 @@ uintptr_t *executeJava() {
         BINARY_OP_long(^);
     )
 
-#ifdef USE_CACHE
-#define INTDIV_OP_long(OP)                         \
-{                                                  \
-    int64_t v1 = STACK_POP(int64_t);               \
-    cache.l = v1 OP (LONGDIV_OVERFLOW(v1, cache.l) \
-                              ? 1 : cache.l);      \
-    DISPATCH(2, 1);                                \
-}
-
-#define ZERO_DIVISOR_CHECK_long                    \
-    ZERO_DIVISOR_CHECK(cache.l);
-#else
 #define INTDIV_OP_long(OP)                         \
 {                                                  \
     int64_t v1 = STACK(int64_t, -2);               \
@@ -982,7 +855,6 @@ uintptr_t *executeJava() {
 
 #define ZERO_DIVISOR_CHECK_long                    \
     ZERO_DIVISOR_CHECK(STACK(int64_t, -1));
-#endif
 
     DEF_OPC_012(OPC_LDIV,
         ZERO_DIVISOR_CHECK_long;
@@ -994,23 +866,12 @@ uintptr_t *executeJava() {
         INTDIV_OP_long(%);
     )
 
-#ifdef USE_CACHE
-#define SHIFT_OP_long(TYPE, OP)       \
-{                                     \
-    int shift = cache.i.v2 & 0x3f;    \
-    cache.i.v2 = cache.i.v1;          \
-    cache.i.v1 = *--ostack;           \
-    cache.l = (TYPE)cache.l OP shift; \
-    DISPATCH(2, 1);                   \
-}
-#else
 #define SHIFT_OP_long(TYPE, OP)       \
 {                                     \
     int shift = *--ostack & 0x3f;     \
     STACK(TYPE, -1) OP##= shift;      \
     DISPATCH(0, 1);                   \
 }
-#endif
 
     DEF_OPC_012(OPC_LSHL,
         SHIFT_OP_long(int64_t, <<);
@@ -1051,20 +912,11 @@ uintptr_t *executeJava() {
     )
 
     DEF_OPC_012(OPC_LNEG,
-#ifdef USE_CACHE
-        cache.l = -cache.l;
-        DISPATCH(2, 1);
-#else
         UNARY_MINUS(int64_t);
-#endif
     )
 
     DEF_OPC_012(OPC_L2I, {
-#ifdef USE_CACHE
-        int64_t value = cache.l;
-#else
         int64_t value = STACK_POP(int64_t);
-#endif
         PUSH_0((int)value, 1);
     })
 
@@ -1166,11 +1018,7 @@ uintptr_t *executeJava() {
     )
 
     DEF_OPC_012(OPC_LCMP, {
-#ifdef USE_CACHE
-        int64_t v2 = cache.l;
-#else
         int64_t v2 = STACK_POP(int64_t);
-#endif
         int64_t v1 = STACK_POP(int64_t);
         PUSH_0(v1 == v2 ? 0 : (v1 < v2 ? -1 : 1), 1);
     })
@@ -1221,11 +1069,7 @@ uintptr_t *executeJava() {
     DEF_OPC_012_2(
             OPC_LRETURN,
             OPC_DRETURN,
-#ifdef USE_CACHE
-        *(u8*)lvars = cache.l;
-#else
         *(u8*)lvars = STACK_POP(uint64_t);
-#endif
         lvars += 2;
         goto methodReturn;
     )
@@ -1272,365 +1116,6 @@ uintptr_t *executeJava() {
         DISPATCH(0, 1);
     })
 
-#ifdef DIRECT
-    DEF_OPC_RW(OPC_LDC, ({
-        int idx, cache;
-        Operand operand;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_LDC, idx, cache);
-
-        frame->last_pc = pc;
-
-        operand.u = resolveSingleConstant(mb->class, idx);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        if(CP_TYPE(cp, idx) == CONSTANT_ResolvedClass ||
-           CP_TYPE(cp, idx) == CONSTANT_ResolvedString) {
-            operand.i = idx;
-            OPCODE_REWRITE(OPC_LDC_W_QUICK, cache, operand);
-        } else
-            OPCODE_REWRITE(OPC_LDC_QUICK, cache, operand);
-
-        REDISPATCH
-    });)
-
-    DEF_OPC_210(OPC_TABLESWITCH, {
-        SwitchTable *table = (SwitchTable*)pc->operand.pntr;
-        int index = *--ostack;
-
-        if(index < table->low || index > table->high)
-            pc = table->deflt;
-        else
-            pc = table->entries[index - table->low];
-
-        DISPATCH_SWITCH
-    })
-
-    DEF_OPC_210(OPC_LOOKUPSWITCH, {
-        LookupTable *table = (LookupTable*)pc->operand.pntr;
-        int key = *--ostack;
-        int i;
-
-        for(i = 0; (i < table->num_entries) &&
-                   (key != table->entries[i].key); i++);
-
-        pc = (i == table->num_entries ? table->deflt
-                                      : table->entries[i].handler);
-        DISPATCH_SWITCH
-    })
-
-    DEF_OPC_RW(OPC_GETSTATIC, ({
-        int idx, cache, opcode;
-        FieldBlock *fb;
-        Operand operand;
-               
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_GETSTATIC, idx, cache);
-
-        frame->last_pc = pc;
-        fb = resolveField(mb->class, idx);
-
-        if(fb != NULL)
-            initClass(fb->class);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        if((*fb->type == 'J') || (*fb->type == 'D'))
-            opcode = OPC_GETSTATIC2_QUICK;
-        else
-            if(*fb->type == 'L' || *fb->type == '[')
-                opcode = OPC_GETSTATIC_QUICK_REF;
-            else
-                opcode = OPC_GETSTATIC_QUICK;
-
-        operand.pntr = fb;
-        OPCODE_REWRITE(opcode, cache, operand);
-
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW(OPC_PUTSTATIC, ({
-        int idx, cache, opcode;
-        FieldBlock *fb;
-        Operand operand;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_PUTSTATIC, idx, cache);
-
-        frame->last_pc = pc;
-        fb = resolveField(mb->class, idx);
-
-        if(fb != NULL)
-            initClass(fb->class);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        if((*fb->type == 'J') || (*fb->type == 'D'))
-            opcode = OPC_PUTSTATIC2_QUICK;
-        else
-            if(*fb->type == 'L' || *fb->type == '[')
-                opcode = OPC_PUTSTATIC_QUICK_REF;
-            else
-                opcode = OPC_PUTSTATIC_QUICK;
-
-        operand.pntr = fb;
-        OPCODE_REWRITE(opcode, cache, operand);
-
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW(OPC_GETFIELD, ({
-        int idx, cache, opcode;
-        Operand operand;
-        FieldBlock *fb;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_GETFIELD, idx, cache);
-
-        frame->last_pc = pc;
-        fb = resolveField(mb->class, idx);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        if((*fb->type == 'J') || (*fb->type == 'D'))
-            opcode = OPC_GETFIELD2_QUICK;
-        else
-            if(*fb->type == 'L' || *fb->type == '[')
-                opcode = OPC_GETFIELD_QUICK_REF;
-            else
-                opcode = OPC_GETFIELD_QUICK;
-
-        operand.i = fb->u.offset;
-        OPCODE_REWRITE(opcode, cache, operand);
-
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW(OPC_PUTFIELD, ({
-        int idx, cache, opcode;
-        FieldBlock *fb;
-        Operand operand;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_PUTFIELD, idx, cache);
-
-        frame->last_pc = pc;
-        fb = resolveField(mb->class, idx);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        if((*fb->type == 'J') || (*fb->type == 'D'))
-            opcode = OPC_PUTFIELD2_QUICK;
-        else
-            if(*fb->type == 'L' || *fb->type == '[')
-                opcode = OPC_PUTFIELD_QUICK_REF;
-            else
-                opcode = OPC_PUTFIELD_QUICK;
-
-        operand.i = fb->u.offset;
-        OPCODE_REWRITE(opcode, cache, operand);
-
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW(OPC_INVOKEVIRTUAL, ({
-        int idx, cache;
-        Operand operand;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_INVOKEVIRTUAL, idx, cache);
-
-        frame->last_pc = pc;
-        new_mb = resolveMethod(mb->class, idx);
- 
-        if(new_mb == NULL || exceptionOccurred0(ee)) {
-            if(isPolymorphicRef(mb->class, idx)) {
-                PolyMethodBlock *pmb;
-
-                clearException();
-                pmb = resolvePolyMethod(mb->class, idx);
-
-                if(pmb == NULL)
-                    goto throwException;
-
-                operand.pntr = pmb;
-                OPCODE_REWRITE(OPC_INVOKEHANDLE, cache, operand);
-            } else
-                goto throwException;
-
-        } else if(new_mb->access_flags & ACC_PRIVATE) {
-            if(mbPolymorphicNameID(new_mb) == ID_invokeBasic) {
-                CACHE_POLY_OFFSETS
-                operand.i = new_mb->args_count;
-                OPCODE_REWRITE(OPC_INVOKEBASIC, cache, operand);
-            } else {
-                operand.pntr = new_mb;
-                OPCODE_REWRITE(OPC_INVOKENONVIRTUAL_QUICK, cache, operand);
-            }
-        } else {
-            operand.uu.u1 = new_mb->args_count;
-            operand.uu.u2 = new_mb->method_table_index;
-            OPCODE_REWRITE(OPC_INVOKEVIRTUAL_QUICK, cache, operand);
-        }
-
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW(OPC_INVOKESPECIAL, ({
-        int idx, cache;
-        Operand operand;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_INVOKESPECIAL, idx, cache);
-
-        frame->last_pc = pc;
-        new_mb = resolveMethod(mb->class, idx);
- 
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        /* Check if invoking a super method... */
-        if((CLASS_CB(mb->class)->access_flags & ACC_SUPER)
-              && isSubClassOf(new_mb->class, CLASS_CB(mb->class)->super)
-              && (new_mb->name[0] != '<')) {
-
-            operand.i = new_mb->method_table_index;
-            OPCODE_REWRITE(OPC_INVOKESUPER_QUICK, cache, operand);
-        } else {
-            operand.pntr = new_mb;
-            OPCODE_REWRITE(OPC_INVOKENONVIRTUAL_QUICK, cache, operand);
-        }
-
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW(OPC_INVOKESTATIC, ({
-        int id, idx, cache;
-        Operand operand;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_INVOKESTATIC, idx, cache);
-
-        frame->last_pc = pc;
-        new_mb = resolveMethod(mb->class, idx);
- 
-        if(new_mb != NULL)
-            initClass(new_mb->class);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        if((id = mbPolymorphicNameID(new_mb)) >= ID_linkToStatic) {
-            int opcode;
-
-            if(id < ID_linkToVirtual)
-                 opcode = OPC_LINKTOSPECIAL;
-            else
-                opcode = OPC_LINKTOVIRTUAL + id - ID_linkToVirtual;
-
-            CACHE_POLY_OFFSETS
-            operand.i = new_mb->args_count;
-            OPCODE_REWRITE(opcode, cache, operand);
-        } else {
-            operand.pntr = new_mb;
-            OPCODE_REWRITE(OPC_INVOKESTATIC_QUICK, cache, operand);
-        }
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW(OPC_INVOKEINTERFACE, ({
-        int idx, cache;
-        Operand operand;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_INVOKEINTERFACE, idx, cache);
-
-        frame->last_pc = pc;
-        new_mb = resolveInterfaceMethod(mb->class, idx);
- 
-        if(exceptionOccurred0(ee))
-            goto throwException;
-
-        if(CLASS_CB(new_mb->class)->access_flags & ACC_INTERFACE) {
-            operand.uu.u1 = idx;
-            operand.uu.u2 = 0;
-            OPCODE_REWRITE(OPC_INVOKEINTERFACE_QUICK, cache, operand);
-        } else {
-            operand.uu.u1 = new_mb->args_count;
-            operand.uu.u2 = new_mb->method_table_index;
-            OPCODE_REWRITE(OPC_INVOKEVIRTUAL_QUICK, cache, operand);
-        }
-
-        REDISPATCH
-    });)
-
-#ifdef JSR292
-    DEF_OPC_RW(OPC_INVOKEDYNAMIC, ({
-        int idx, cache;
-        Operand operand;
-        Object *appendix;
-        MethodBlock *invoker;
-        Thread *self = threadSelf();
-        ResolvedInvDynCPEntry *entry;
-
-        WITH_OPCODE_CHANGE_CP_DINDEX(OPC_INVOKEDYNAMIC, idx, cache);
-
-        frame->last_pc = pc;
-        entry = resolveInvokeDynamic(mb->class, idx);
-        invoker = findInvokeDynamicInvoker(mb->class, entry, &appendix);
-
-        if(invoker == NULL)
-            goto throwException;
-
-        resolveLock(self);
-        if(!OPCODE_CHANGED(OPC_INVOKEDYNAMIC)) {
-            InvDynMethodBlock *idmb = resolveCallSite(entry, invoker,
-                                                      appendix);
-
-            operand.pntr = idmb;
-            OPCODE_REWRITE(OPC_INVOKEDYNAMIC_QUICK, cache, operand);
-        }
-        resolveUnlock(self);
-        REDISPATCH
-    });)
-#endif
-
-    DEF_OPC_RW(OPC_MULTIANEWARRAY, ({
-        int idx = pc->operand.uui.u1;
-        int cache = pc->operand.uui.i;
-
-        frame->last_pc = pc;
-        resolveClass(mb->class, idx, TRUE, FALSE);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-        
-        OPCODE_REWRITE(OPC_MULTIANEWARRAY_QUICK, cache, pc->operand);
-        REDISPATCH
-    });)
-
-    DEF_OPC_RW_4(OPC_NEW, OPC_ANEWARRAY, OPC_CHECKCAST, OPC_INSTANCEOF, ({
-        int idx = pc->operand.uui.u1;
-        int opcode = pc->operand.uui.u2;
-        int cache = pc->operand.uui.i;
-        Class *class;
-
-        frame->last_pc = pc;
-        class = resolveClass(mb->class, idx, TRUE, opcode == OPC_NEW);
-
-        if(exceptionOccurred0(ee))
-            goto throwException;
-        
-        if(opcode == OPC_NEW) {
-            ClassBlock *cb = CLASS_CB(class);
-            if(cb->access_flags & (ACC_INTERFACE | ACC_ABSTRACT)) {
-                signalException(java_lang_InstantiationError, cb->name);
-                goto throwException;
-            }
-        }
-
-        OPCODE_REWRITE((opcode + OPC_NEW_QUICK-OPC_NEW), cache, pc->operand);
-        REDISPATCH
-    });)
-#else /* DIRECT */
     DEF_OPC_210(OPC_LDC, {
         frame->last_pc = pc;
 
@@ -1817,28 +1302,6 @@ uintptr_t *executeJava() {
         }
     })
 
-#ifdef USE_CACHE
-    DEF_OPC_012(OPC_PUTFIELD_QUICK_W, {
-        FieldBlock *fb = RESOLVED_FIELD(pc);
- 
-        if((*fb->type == 'J') || (*fb->type == 'D')) {
-            Object *obj = (Object *)*--ostack;
-
-            NULL_POINTER_CHECK(obj);
-            INST_DATA(obj, u8, fb->u.offset) = cache.l;
-        } else {
-            Object *obj = (Object *)cache.i.v1;
-
-            NULL_POINTER_CHECK(obj);
-
-            if(*fb->type == 'L' || *fb->type == '[')
-                INST_DATA(obj, uintptr_t, fb->u.offset) = cache.i.v2;
-            else
-                INST_DATA(obj, u4, fb->u.offset) = cache.i.v2;
-        }
-        DISPATCH(0, 3);
-    })
-#else
     DEF_OPC_012(OPC_PUTFIELD_QUICK_W, {
         FieldBlock *fb = RESOLVED_FIELD(pc);
  
@@ -1861,7 +1324,6 @@ uintptr_t *executeJava() {
         }
         DISPATCH(0, 3);
     })
-#endif
 
     DEF_OPC_210(OPC_INVOKEVIRTUAL, {
         int idx;
@@ -2100,7 +1562,6 @@ uintptr_t *executeJava() {
     DEF_OPC_210(OPC_LOCK, {
         DISPATCH(0, 0);
     })
-#endif /* DIRECT */
 
     DEF_OPC_210(OPC_GETSTATIC2_QUICK, {
         FieldBlock *fb = RESOLVED_FIELD(pc);
@@ -2119,24 +1580,6 @@ uintptr_t *executeJava() {
         PUSH_LONG(INST_DATA(obj, u8, SINGLE_INDEX(pc)), 3);
     })
 
-#ifdef USE_CACHE
-    DEF_OPC_012(OPC_PUTFIELD2_QUICK, {
-        Object *obj = (Object *)*--ostack;
-        NULL_POINTER_CHECK(obj);
-
-        INST_DATA(obj, u8, SINGLE_INDEX(pc)) = cache.l;
-        DISPATCH(0, 3);
-    })
-
-#define PUTFIELD_QUICK(type, suffix)                         \
-    DEF_OPC_012(OPC_PUTFIELD_QUICK##suffix, {                \
-        Object *obj = (Object *)cache.i.v1;                  \
-        NULL_POINTER_CHECK(obj);                             \
-                                                             \
-        INST_DATA(obj, type, SINGLE_INDEX(pc)) = cache.i.v2; \
-        DISPATCH(0, 3);                                      \
-    })
-#else
     DEF_OPC_012(OPC_PUTFIELD2_QUICK, {
         Object *obj = (Object *)ostack[-3];
 
@@ -2155,7 +1598,6 @@ uintptr_t *executeJava() {
         INST_DATA(obj, type, SINGLE_INDEX(pc)) = ostack[1]; \
         DISPATCH(0, 3);                                     \
     })
-#endif
 
     PUTFIELD_QUICK(u4, /* none */)
     PUTFIELD_QUICK(uintptr_t, _REF)
@@ -2385,19 +1827,6 @@ uintptr_t *executeJava() {
         goto throwException;
     })
 
-#ifdef INLINING
-    DEF_OPC_RW(OPC_INLINE_REWRITER, ({
-        inlineBlockWrappedOpcode(mb, pc);
-    });)
-
-    DEF_OPC_RW(OPC_PROFILE_REWRITER, ({
-        void *handler = inlineProfiledBlock(pc, mb, FALSE);
-
-        if(handler != NULL)
-            goto *handler;
-    });)
-#endif
-
     DEF_OPC_210(OPC_INVOKEVIRTUAL_QUICK, {
         Class *new_class;
 
@@ -2498,23 +1927,6 @@ methodReturn:
 
     DISPATCH_METHOD_RET(*pc >= OPC_INVOKEINTERFACE_QUICK ? 5 : 3);
 
-#ifdef INLINING
-    DEF_DUMMY_HANDLERS
-
-throwNull:
-    THROW_EXCEPTION(java_lang_NullPointerException, NULL);
-
-throwArithmeticExcep:
-    THROW_EXCEPTION(java_lang_ArithmeticException, "division by zero");
-
-throwOOB:
-    {
-        char buff[MAX_INT_DIGITS];
-        snprintf(buff, MAX_INT_DIGITS, "%d", oob_array_index);
-        THROW_EXCEPTION(java_lang_ArrayIndexOutOfBoundsException, buff);
-    }
-#endif
-
 throwException:
     {
         Object *excep = ee->exception;
@@ -2559,18 +1971,10 @@ throwException:
 #endif
 }
 
-#ifndef executeJava
 int initialiseInterpreter(InitArgs *args) {
-#ifdef DIRECT
-    initialiseDirect(args);
-#endif
     return TRUE;
 }
 
 void shutdownInterpreter() {
-#ifdef INLINING
-    shutdownInlining();
-#endif
 }
-#endif
 

@@ -132,23 +132,7 @@ char *getCwd() {
 }
     
 char *getExecutionEngineName() {
-    return
-#ifdef THREADED
-#ifdef DIRECT
-#ifdef INLINING
-    "inline-"
-#else /* INLINING */
-    "direct-"
-#endif /* INLINING */
-#endif /* DIRECT */
-    "threaded interpreter"
-#ifdef USE_CACHE
-    " with stack-caching"
-#endif /* USE_CACHE */
-#else /* THREADED */
-    "switch-based interpreter"
-#endif /*THREADED */
-;
+    return "switch-based interpreter";
 }
 
 void setUserDirProperty(Object *properties) {

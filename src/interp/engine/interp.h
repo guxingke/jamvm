@@ -86,7 +86,6 @@
 #define LONGDIV_OVERFLOW(dividend, divisor) FALSE
 #endif
 
-#ifndef JSR292
 #define CACHE_POLY_OFFSETS
 #define CACHED_POLY_OFFSETS
 
@@ -97,16 +96,7 @@
 #define mbPolymorphicNameID(mb)       0
 #define isPolymorphicRef(class, idx)  FALSE
 #define resolvePolyMethod(class, idx) ({ NULL; })
-#endif
 
 /* Include the interpreter variant header */
 
-#ifdef DIRECT
-#ifdef INLINING
-#include "interp-inlining.h"
-#else
-#include "interp-direct.h"
-#endif /* INLINING */
-#else
 #include "interp-indirect.h"
-#endif /* DIRECT */

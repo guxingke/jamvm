@@ -437,116 +437,11 @@ typedef union extra_attributes {
         AttributeData **method_annos;
         AttributeData **method_parameter_annos;
         AttributeData **method_anno_default_val;
-#ifdef JSR308
-        AttributeData *class_type_annos;
-        AttributeData **field_type_annos;
-        AttributeData **method_type_annos;
-#endif
-#ifdef JSR901
-        AttributeData **method_parameters;
-#endif
     };
     void *data[0];
 } ExtraAttributes;
 
-#ifdef DIRECT
-typedef union ins_operand {
-    uintptr_t u;
-    int i;
-    struct {
-        signed short i1;
-        signed short i2;
-    } ii;
-    struct {
-        unsigned short u1;
-        unsigned short u2;
-    } uu;
-    struct {
-        unsigned short u1;
-        unsigned char u2;
-        char i;
-    } uui;
-    void *pntr;
-} Operand;
-
-typedef struct instruction {
-#ifdef DIRECT_DEBUG
-    unsigned char opcode;
-    char cache_depth;
-    short bytecode_pc;
-#endif
-    const void *handler;
-    Operand operand;
-} Instruction;
-
-typedef struct switch_table {
-    int low;
-    int high;
-    Instruction *deflt;
-    Instruction **entries;
-} SwitchTable;
-
-typedef struct lookup_entry {
-    int key;
-    Instruction *handler;
-} LookupEntry;
-
-typedef struct lookup_table {
-    int num_entries;
-    Instruction *deflt;
-    LookupEntry *entries;
-} LookupTable;
-
-#ifdef INLINING
-typedef struct opcode_info {
-    unsigned char opcode;
-    unsigned char cache_depth;
-} OpcodeInfo;
-
-typedef struct profile_info ProfileInfo;
-
-typedef struct basic_block {
-    union {
-        struct {
-            int quickened;
-            ProfileInfo *profiled;
-        } profile;
-        struct {
-            char *addr;
-            struct basic_block *next;
-        } patch;
-    } u;
-    int length;
-    Instruction *start;
-    OpcodeInfo *opcodes;
-    struct basic_block *prev;
-    struct basic_block *next;
-} BasicBlock;
-
-typedef struct quick_prepare_info {
-    BasicBlock *block;
-    Instruction *quickened;
-    struct quick_prepare_info *next;
-} QuickPrepareInfo;
-
-typedef struct prepare_info {
-    BasicBlock *block;
-    Operand operand;
-} PrepareInfo;
-
-struct profile_info {
-    BasicBlock *block;
-    int profile_count;
-    const void *handler;
-    struct profile_info *next;
-    struct profile_info *prev;
-};
-#endif
-
-typedef Instruction *CodePntr;
-#else
 typedef unsigned char *CodePntr;
-#endif
 
 typedef struct methodblock MethodBlock;
 typedef uintptr_t *(*NativeMethod)(Class*, MethodBlock*, uintptr_t*);
@@ -591,10 +486,6 @@ struct methodblock {
        };
    };
    int method_table_index;
-#ifdef INLINING
-   QuickPrepareInfo *quick_prepare_info;
-   ProfileInfo *profile_info;
-#endif
 };
 
 typedef struct poly_methodblock  {
@@ -605,9 +496,6 @@ typedef struct poly_methodblock  {
 } PolyMethodBlock;
 
 typedef struct invdyn_methodblock  {
-#ifndef DIRECT
-    int id;
-#endif
     Object *appendix;
     MethodBlock *invoker;
     struct invdyn_methodblock *next;
@@ -618,9 +506,6 @@ typedef struct resolved_inv_dyn_cp_entry {
     char *type;
     int boot_method_cp_idx;
     InvDynMethodBlock *idmb_list;
-#ifndef DIRECT
-    InvDynMethodBlock *cache;
-#endif
 } ResolvedInvDynCPEntry;
 
 typedef struct fieldblock {
@@ -764,20 +649,6 @@ typedef struct InitArgs {
     void (*exit)(int status);
     void (*abort)(void);
 
-#ifdef INLINING
-    unsigned int codemem;
-    int replication_threshold;
-    int profile_threshold;
-    int branch_patching_dup;
-    int branch_patching;
-    int print_codestats;
-    int join_blocks;
-    int profiling;
-#endif
-
-#ifdef HAVE_PROFILE_STUBS
-    int dump_stubs_profiles;
-#endif
 } InitArgs;
 
 #define CLASS_CB(classRef)           ((ClassBlock*)(classRef+1))

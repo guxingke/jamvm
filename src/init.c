@@ -69,21 +69,6 @@ void setDefaultInitArgs(InitArgs *args) {
     args->vfprintf = vfprintf;
     args->abort    = abort;
     args->exit     = exit;
-
-#ifdef INLINING
-    args->replication_threshold = 10;
-    args->profile_threshold     = 10;
-    args->branch_patching_dup   = TRUE;
-    args->branch_patching       = TRUE;
-    args->print_codestats       = FALSE;
-    args->join_blocks           = TRUE;
-    args->profiling             = TRUE;
-    args->codemem               = args->max_heap/4;
-#endif
-
-#ifdef HAVE_PROFILE_STUBS
-    args->dump_stubs_profiles   = FALSE;
-#endif
 }
 
 int VMInitialising() {
@@ -262,55 +247,6 @@ int parseCommonOpts(char *string, InitArgs *args, int is_jni) {
 
     } else if(strcmp(string, "-Xtracejnisigs") == 0) {
         args->trace_jni_sigs = TRUE;
-#ifdef INLINING
-    } else if(strcmp(string, "-Xnoinlining") == 0) {
-        /* Turning inlining off is equivalent to setting
-           code memory to zero */
-        args->codemem = 0;
-
-    } else if(strcmp(string, "-Xnoprofiling") == 0) {
-        args->profiling = FALSE;
-
-    } else if(strcmp(string, "-Xnopatching") == 0) {
-        args->branch_patching = FALSE;
-
-    } else if(strcmp(string, "-Xnopatchingdup") == 0) {
-        args->branch_patching_dup = FALSE;
-
-    } else if(strcmp(string, "-Xnojoinblocks") == 0) {
-        args->join_blocks = FALSE;
-
-    } else if(strcmp(string, "-Xcodestats") == 0) {
-        args->print_codestats = TRUE;
-
-    } else if(strncmp(string, "-Xprofiling:", 12) == 0) {
-        args->profile_threshold = strtol(string + 12, NULL, 0);
-
-    } else if(strncmp(string, "-Xreplication:", 14) == 0) {
-        char *pntr = string + 14;
-
-        if(strcmp(pntr, "none") == 0)
-            args->replication_threshold = INT_MAX;
-        else
-            if(strcmp(pntr, "always") == 0)
-                args->replication_threshold = 0;
-            else
-                args->replication_threshold = strtol(pntr, NULL, 0);
-
-    } else if(strncmp(string, "-Xcodemem:", 10) == 0) {
-        char *pntr = string + 10;
-
-        args->codemem = strncmp(pntr, "unlimited", 10) == 0 ?
-            INT_MAX : parseMemValue(pntr);
-
-    } else if(strcmp(string, "-Xshowreloc") == 0) {
-        showRelocatability();
-#endif
-
-#ifdef HAVE_PROFILE_STUBS
-    } else if(strcmp(string, "-Xdumpstubsprofiles") == 0) {
-        args->dump_stubs_profiles = TRUE;
-#endif
     /* Compatibility options */
     } else {
         int i;
