@@ -31,3 +31,5 @@ src/interp/engine/compute_relocatability
 src/interp/relocatability.inc
 
 .idea/
+build/
+cmake-build-debug/

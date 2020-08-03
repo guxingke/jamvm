@@ -21,9 +21,7 @@
 
 noinst_LTLIBRARIES    = libengine.la
 libengine_la_SOURCES  = interp.c interp2.c relocatability.c interp.h \
-                        interp-threading.h interp-indirect.h \
-                        interp-direct.h interp-inlining.h \
-                        interp-direct-common.h
+                        interp-indirect.h
 
 if COMPILE_TIME_RELOC_CHECKS
 noinst_PROGRAMS = compute_relocatability

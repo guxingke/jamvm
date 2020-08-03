@@ -452,13 +452,6 @@ Class *parseClass(char *classname, char *data, int offset, int len,
                                     field - classblock->fields, ptr,
                                     attr_length, classblock->fields_count); 
                 ptr += attr_length;
-#ifdef JSR308
-            } else if(attr_name == SYMBOL(RuntimeVisibleTypeAnnotations)) {
-                setIndexedAttribute(extra_attributes.field_type_annos,
-                                    field - classblock->fields, ptr,
-                                    attr_length, classblock->fields_count); 
-                ptr += attr_length;
-#endif
             } else
                 ptr += attr_length;
         }
@@ -581,20 +574,6 @@ Class *parseClass(char *classname, char *data, int offset, int len,
                                     method - classblock->methods, ptr,
                                     attr_length, classblock->methods_count); 
                 ptr += attr_length;
-#ifdef JSR308
-            } else if(attr_name == SYMBOL(RuntimeVisibleTypeAnnotations)) {
-                setIndexedAttribute(extra_attributes.method_type_annos,
-                                    method - classblock->methods, ptr,
-                                    attr_length, classblock->methods_count); 
-                ptr += attr_length;
-#endif
-#ifdef JSR901
-            } else if(attr_name == SYMBOL(MethodParameters)) {
-                setIndexedAttribute(extra_attributes.method_parameters,
-                                    method - classblock->methods, ptr,
-                                    attr_length, classblock->methods_count); 
-                ptr += attr_length;
-#endif
             } else
                 ptr += attr_length;
         }
@@ -675,42 +654,6 @@ Class *parseClass(char *classname, char *data, int offset, int len,
             setSingleAttribute(extra_attributes.class_annos,
                                ptr, attr_length);
             ptr += attr_length;
-#ifdef JSR308
-        } else if(attr_name == SYMBOL(RuntimeVisibleTypeAnnotations)) {
-            setSingleAttribute(extra_attributes.class_type_annos,
-                               ptr, attr_length);
-            ptr += attr_length;
-#endif
-#ifdef JSR292
-        } else if(attr_name == SYMBOL(BootstrapMethods)) {
-            int num_methods, *offsets;
-            u2 *indexes;
-            char *data;
-
-            READ_U2(num_methods, ptr, len);
-
-            data = sysMalloc(attr_length + num_methods*2 + 2);
-            indexes = (u2*)(data + num_methods*4 + 4);
-            offsets = (int*)data;
-
-            for(; num_methods != 0; num_methods--) {
-                int method_ref, num_args;
-                READ_U2(method_ref, ptr, len);
-                READ_U2(num_args, ptr, len);
-
-                *offsets++ = (char*)indexes - data;
-                *indexes++ = method_ref;
-
-                for(; num_args != 0; num_args--) {
-                    int arg_idx;
-                    READ_U2(arg_idx, ptr, len);
-                    *indexes++ = arg_idx;
-                }
-            }
-
-            *offsets++ = (char*)indexes - data;
-            classblock->bootstrap_methods = data;
-#endif
         } else
             ptr += attr_length;
     }
@@ -2034,10 +1977,6 @@ void freeClassData(Class *class) {
         return;
     }
 
-#ifdef JSR292
-    freeResolvedPolyData(class);
-#endif
-
     gcPendingFree((void*)cb->constant_pool.type);
     gcPendingFree(cb->constant_pool.info);
     gcPendingFree(cb->interfaces);
@@ -2046,14 +1985,6 @@ void freeClassData(Class *class) {
     for(i = 0; i < cb->methods_count; i++) {
         MethodBlock *mb = &cb->methods[i];
 
-#ifdef DIRECT
-        if(mb->state == MB_PREPARED) {
-#ifdef INLINING
-            freeMethodInlinedInfo(mb);
-#endif
-            gcPendingFree(mb->code);
-        } else
-#endif
         if(!(mb->access_flags & (ACC_NATIVE | ACC_ABSTRACT | ACC_MIRANDA)))
             gcPendingFree(mb->code);
 
@@ -2093,18 +2024,6 @@ void freeClassData(Class *class) {
                               methods_count);
         freeIndexedAttributes(cb->extra_attributes->method_anno_default_val,
                               methods_count);
-
-#ifdef JSR308
-        freeSingleAttributes(cb->extra_attributes->class_type_annos);
-        freeIndexedAttributes(cb->extra_attributes->field_type_annos,
-                              cb->fields_count);
-        freeIndexedAttributes(cb->extra_attributes->method_type_annos,
-                              methods_count);
-#endif
-#ifdef JSR901
-        freeIndexedAttributes(cb->extra_attributes->method_parameters,
-                              methods_count);
-#endif
 
         gcPendingFree(cb->extra_attributes);
     }

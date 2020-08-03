@@ -19,25 +19,6 @@
  * Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifdef THREADED
-#include "interp-threading.h"
-
-#define INTERPRETER_DEFINITIONS                            \
-    DEFINE_HANDLER_TABLES
-
-#define DISPATCH_PROLOGUE                                  \
-    DISPATCH_FIRST                                         \
-unused:
-
-#define I(opcode, level, label) &&unused
-#define D(opcode, level, label) L(opcode, level, label)
-#define X(opcode, level, label) L(opcode, level, label)
-
-#define DEF_HANDLER_TABLES(level)                          \
-    DEF_HANDLER_TABLE(level, ENTRY);
-
-#else /* THREADED */
-
 #define INTERPRETER_DEFINITIONS                            \
     /* none */
 
@@ -45,8 +26,6 @@ unused:
     while(TRUE) {                                          \
         switch(*pc) {                                      \
             default:
-
-#endif /* THREADED */
 
 #define INTERPRETER_PROLOGUE                               \
     DISPATCH_PROLOGUE                                      \
@@ -86,31 +65,6 @@ unused:
     pc[0] = opcode;                                        \
 }
 
-#ifdef THREADED
-/* Two levels of macros are needed to correctly produce the label
- * from the OPC_xxx macro passed into DEF_OPC as cpp doesn't 
- * prescan when concatenating with ##...
- *
- * On gcc <= 2.95, we also get a space inserted before the :
- * e.g DEF_OPC(OPC_NULL) -> opc0 : - the ##: is a hack to fix
- * this, but this generates warnings on >= 2.96...
- */
-#if (__GNUC__ == 2) && (__GNUC_MINOR__ <= 95)
-#define label(x, y, z)                          \
-opc##x##_##y##_##z##:
-#else
-#define label(x, y, z)                          \
-opc##x##_##y##_##z:
-#endif
-
-#define DISPATCH(level, ins_len)                \
-{                                               \
-    pc += ins_len;                              \
-    goto *handlers_##level##_ENTRY[*pc];        \
-}
-
-#else /* THREADED */
-
 #define label(x, y, z)                          \
     case x:
 
@@ -119,7 +73,6 @@ opc##x##_##y##_##z:
     pc += ins_len;                              \
     break;                                      \
 }
-#endif
 
 #define DEF_OPC(opcode, level, BODY)            \
     label(opcode, level, ENTRY)                 \
@@ -145,95 +98,6 @@ opc##x##_##y##_##z:
 #define DEF_OPC_FLOAT(opcode, BODY)             \
     DEF_OPC_210(opcode, BODY)
 
-#ifdef USE_CACHE
-#define DEF_OPC_012(opcode, BODY)               \
-    label(opcode, 0, ENTRY)                     \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(opcode, 1, ENTRY)                     \
-        cache.i.v2 = cache.i.v1;                \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(opcode, 2, ENTRY)                     \
-        BODY
-        
-#define DEF_OPC_012_2(op1, op2, BODY)           \
-    label(op1, 0, ENTRY)                        \
-    label(op2, 0, ENTRY)                        \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(op1, 1, ENTRY)                        \
-    label(op2, 1, ENTRY)                        \
-        cache.i.v2 = cache.i.v1;                \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(op1, 2, ENTRY)                        \
-    label(op2, 2, ENTRY)                        \
-        BODY
-
-#define DEF_OPC_012_3(op1, op2, op3, BODY)      \
-    label(op1, 0, ENTRY)                        \
-    label(op2, 0, ENTRY)                        \
-    label(op3, 0, ENTRY)                        \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(op1, 1, ENTRY)                        \
-    label(op2, 1, ENTRY)                        \
-    label(op3, 1, ENTRY)                        \
-        cache.i.v2 = cache.i.v1;                \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(op1, 2, ENTRY)                        \
-    label(op2, 2, ENTRY)                        \
-    label(op3, 2, ENTRY)                        \
-        BODY
-
-#define DEF_OPC_012_4(op1, op2, op3, op4, BODY) \
-    label(op1, 0, ENTRY)                        \
-    label(op2, 0, ENTRY)                        \
-    label(op3, 0, ENTRY)                        \
-    label(op4, 0, ENTRY)                        \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(op1, 1, ENTRY)                        \
-    label(op2, 1, ENTRY)                        \
-    label(op3, 1, ENTRY)                        \
-    label(op4, 1, ENTRY)                        \
-        cache.i.v2 = cache.i.v1;                \
-        cache.i.v1 = *--ostack;                 \
-                                                \
-    label(op1, 2, ENTRY)                        \
-    label(op2, 2, ENTRY)                        \
-    label(op3, 2, ENTRY)                        \
-    label(op4, 2, ENTRY)                        \
-        BODY
-
-#define DEF_OPC_210(opcode, BODY)               \
-    label(opcode, 2, ENTRY)                     \
-        *ostack++ = cache.i.v1;                 \
-        cache.i.v1 = cache.i.v2;                \
-                                                \
-    label(opcode, 1, ENTRY)                     \
-        *ostack++ = cache.i.v1;                 \
-                                                \
-    label(opcode, 0, ENTRY)                     \
-        BODY
-        
-#define DEF_OPC_210_2(op1, op2, BODY)           \
-    label(op1, 2, ENTRY)                        \
-    label(op2, 2, ENTRY)                        \
-        *ostack++ = cache.i.v1;                 \
-        cache.i.v1 = cache.i.v2;                \
-                                                \
-    label(op1, 1, ENTRY)                        \
-    label(op2, 1, ENTRY)                        \
-        *ostack++ = cache.i.v1;                 \
-                                                \
-    label(op1, 0, ENTRY)                        \
-    label(op2, 0, ENTRY)                        \
-        BODY
-
-#else /* USE_CACHE */
 
 #define DEF_OPC_012(opcode, BODY)               \
     DEF_OPC(opcode, 0, BODY)
@@ -256,8 +120,6 @@ opc##x##_##y##_##z:
 
 #define DEF_OPC_210_2(op1, op2, BODY)           \
     DEF_OPC_012_2(op1, op2, ({BODY});)
-
-#endif /* USE_CACHE */
 
 
 #define DISPATCH_FIRST                          \
